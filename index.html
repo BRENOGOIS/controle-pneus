@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle de Pneus | NHL</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛞</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --bg: #EAEEEE;
+    --surface: #FFFFFF;
+    --surface-2: #F3F5F4;
+    --ink: #101A22;
+    --ink-dim: #5C6970;
+    --ink-faint: #899398;
+    --line: #D9DFDE;
+    --line-strong: #C4CCCB;
+    --navy: #0B2A45;
+    --navy-2: #123456;
+    --novo: #1E7A4C;
+    --novo-soft: #E4F3EA;
+    --rcp: #B9660B;
+    --rcp-soft: #FBEBDA;
+    --teal: #0E7C86;
+    --teal-soft: #E1F1F1;
+    --alert: #AD2E22;
+    --font-display: 'Archivo', 'Arial Narrow', Helvetica, sans-serif;
+    --font-body: 'IBM Plex Sans', 'Segoe UI', Helvetica, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(11,42,69,.06), 0 1px 0 rgba(11,42,69,.04);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0A141E;
+      --surface: #101D2C;
+      --surface-2: #14222F;
+      --ink: #E9EFF2;
+      --ink-dim: #93A4AE;
+      --ink-faint: #63737D;
+      --line: #223343;
+      --line-strong: #2C4256;
+      --navy: #061422;
+      --navy-2: #0B2136;
+      --novo: #3FAE77;
+      --novo-soft: #123424;
+      --rcp: #E0932F;
+      --rcp-soft: #3A2A12;
+      --teal: #2FA7B3;
+      --teal-soft: #0F2E31;
+      --alert: #E5675A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0A141E;
+    --surface: #101D2C;
+    --surface-2: #14222F;
+    --ink: #E9EFF2;
+    --ink-dim: #93A4AE;
+    --ink-faint: #63737D;
+    --line: #223343;
+    --line-strong: #2C4256;
+    --navy: #061422;
+    --navy-2: #0B2136;
+    --novo: #3FAE77;
+    --novo-soft: #123424;
+    --rcp: #E0932F;
+    --rcp-soft: #3A2A12;
+    --teal: #2FA7B3;
+    --teal-soft: #0F2E31;
+    --alert: #E5675A;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  ::selection { background: var(--teal); color: #fff; }
+
+  /* ---------- Header ---------- */
+  header.app-header {
+    position: sticky; top: 0; z-index: 40;
+    padding-top: env(safe-area-inset-top, 0px);
+    background: linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%);
+    border-bottom: 3px solid var(--teal);
+  }
+  .header-inner {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding: 14px 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand-mark {
+    width: 40px; height: 40px; flex: none; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #1c4d74, #06192b 75%);
+    border: 2px solid #2f6f95;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .brand-text { min-width: 0; }
+  .brand-text h1 {
+    margin: 0; font-family: var(--font-display); font-weight: 800;
+    font-size: 19px; letter-spacing: .01em; color: #fff; line-height: 1.15;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .brand-text p {
+    margin: 2px 0 0; font-size: 12px; color: #9FB4C7; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .header-actions { display: flex; align-items: center; gap: 14px; flex: none; }
+  .base-info { text-align: right; display: none; }
+  .base-info .lbl { font-size: 10px; letter-spacing: .08em; color: #7E97AC; font-weight: 600; }
+  .sync-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #E0932F; margin-right: 4px; vertical-align: middle; transition: background .3s; }
+  .sync-dot.online { background: #3FAE77; }
+  .sync-dot.error { background: #E5675A; }
+  .base-info .val { font-size: 13px; color: #E7EEF3; font-weight: 600; font-family: var(--font-mono); }
+  @media (min-width: 640px) { .base-info { display: block; } }
+
+  .btn {
+    appearance: none; border: none; cursor: pointer;
+    font-family: var(--font-body); font-weight: 600; font-size: 13.5px;
+    border-radius: 8px; padding: 10px 16px;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: transform .08s ease, filter .12s ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--teal); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line-strong); }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn-header { background: #fff; color: var(--navy); }
+  .btn-header:hover { filter: brightness(.95); }
+  .btn-sm { padding: 7px 12px; font-size: 12.5px; border-radius: 7px; }
+  .btn:focus-visible, select:focus-visible, input:focus-visible, .tab:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  /* ---------- Tabs ---------- */
+  nav.tabbar {
+    position: sticky; top: calc(69px + env(safe-area-inset-top, 0px)); z-index: 30;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .tabbar-inner {
+    max-width: 1280px; margin: 0 auto; padding: 0 20px;
+    display: flex; gap: 4px; overflow-x: auto;
+  }
+  .tab {
+    background: none; border: none; cursor: pointer; font-family: var(--font-body);
+    padding: 13px 14px 11px; font-size: 13.5px; font-weight: 600; color: var(--ink-dim);
+    border-bottom: 3px solid transparent; white-space: nowrap;
+  }
+  .tab.active { color: var(--navy); border-bottom-color: var(--rcp); }
+  :root[data-theme="dark"] .tab.active, @media (prefers-color-scheme: dark) { }
+  .tab.active { color: var(--ink); }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 1280px; margin: 0 auto; padding: 20px; }
+  .view { display: none; }
+  .view.active { display: block; animation: fadein .2s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px);} to { opacity:1; transform:none; } }
+
+  .grid { display: grid; gap: 14px; }
+  .grid-kpi { grid-template-columns: repeat(4, 1fr); }
+  .grid-2 { grid-template-columns: 1.3fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 980px) { .grid-kpi { grid-template-columns: repeat(2, 1fr); } .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .grid-kpi { grid-template-columns: 1fr 1fr; } }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px; min-width: 0;
+  }
+  .panel h2 {
+    margin: 0 0 14px; font-family: var(--font-display); font-weight: 700;
+    font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim);
+  }
+  .panel .hint { font-size: 11.5px; color: var(--ink-faint); font-weight: 500; margin: -10px 0 14px; }
+
+  /* KPI cards */
+  .kpi {
+    background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--teal);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 16px;
+    display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  }
+  .kpi .n { font-family: var(--font-display); font-weight: 800; font-size: 34px; line-height: 1; color: var(--ink); }
+  .kpi .l { font-size: 12px; font-weight: 600; color: var(--ink); margin-top: 6px; }
+  .kpi .s { font-size: 11.5px; color: var(--ink-faint); font-weight: 500; }
+  .kpi.c-novo { border-left-color: var(--novo); }
+  .kpi.c-rcp { border-left-color: var(--rcp); }
+  .kpi.c-teal { border-left-color: var(--teal); }
+  .kpi.c-navy { border-left-color: var(--navy); }
+
+  /* Horizontal bar chart */
+  .barh-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .barh-label { flex: 0 0 150px; font-size: 12px; font-weight: 600; color: var(--ink-dim); text-align: right;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barh-track { flex: 1; background: var(--surface-2); border-radius: 5px; height: 20px; overflow: hidden; position: relative; }
+  .barh-fill { height: 100%; border-radius: 5px 0 0 5px; background: var(--teal); transition: width .5s ease; }
+  .barh-value { flex: 0 0 44px; font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; color: var(--ink); }
+
+  /* Vertical bar chart */
+  .barv-chart { display: flex; align-items: flex-end; gap: 14px; height: 210px; padding-top: 10px; overflow-x: auto; }
+  .barv-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1 0 60px; height: 100%; min-width: 56px; }
+  .barv-value { font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; color: var(--ink); margin-bottom: 6px; }
+  .barv-bar { width: 60%; max-width: 46px; border-radius: 4px 4px 0 0; background: var(--teal); min-height: 3px; transition: height .5s ease; }
+  .barv-label { margin-top: 8px; font-size: 10.5px; font-weight: 600; color: var(--ink-dim); text-align: center; line-height: 1.25; }
+
+  /* Stacked bar chart */
+  .stack-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+  .stack-label { flex: 0 0 170px; font-size: 12px; font-weight: 600; color: var(--ink-dim); text-align: right;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stack-track { flex: 1; background: var(--surface-2); border-radius: 5px; height: 22px; overflow: hidden; display: flex; }
+  .stack-seg.novo { background: var(--novo); }
+  .stack-seg.rcp { background: var(--rcp); }
+  .stack-value { flex: 0 0 48px; font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; color: var(--ink); }
+  .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; font-weight: 600; color: var(--ink-dim); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .dot.novo { background: var(--novo); } .dot.rcp { background: var(--rcp); }
+
+  ul.bullets { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  ul.bullets li { font-size: 13px; line-height: 1.5; color: var(--ink); padding-left: 16px; position: relative; }
+  ul.bullets li::before { content: '▪'; position: absolute; left: 0; color: var(--teal); }
+  ul.bullets.attn li::before { color: var(--rcp); }
+
+  .progress-row { margin-bottom: 16px; }
+  .progress-row:last-child { margin-bottom: 0; }
+  .progress-head { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .progress-track { height: 12px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 6px; transition: width .5s ease; }
+  .progress-fill.novo { background: var(--novo); }
+  .progress-fill.rcp { background: var(--rcp); }
+
+  .matrix-row { padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; line-height: 1.6; }
+  .matrix-row:last-child { border-bottom: none; }
+  .matrix-row .forn { font-weight: 700; color: var(--ink); }
+  .matrix-row .pairs { color: var(--ink-dim); }
+  .matrix-row .pairs b { color: var(--ink); font-family: var(--font-mono); font-weight: 600; }
+
+  .filial-summary-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .filial-summary-row:last-child { border-bottom: none; }
+  .filial-summary-row .fname { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .filial-summary-row .fbreak { font-size: 11.5px; color: var(--ink-dim); margin-top: 2px; }
+  .filial-summary-row .ftotal { font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: var(--ink); }
+
+  /* Dimension picker */
+  .dim-picker { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .dim-picker label { font-size: 12px; font-weight: 700; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .05em; }
+  select, input[type="search"] {
+    font-family: var(--font-body); font-size: 13.5px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 12px;
+  }
+  select#dimSelect { font-family: var(--font-mono); font-weight: 600; min-width: 180px; }
+
+  /* Database view */
+  .db-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .db-toolbar input[type="search"] { flex: 1 1 220px; min-width: 160px; }
+  .db-subtabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .db-subtab { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface);
+    font-size: 12.5px; font-weight: 700; color: var(--ink-dim); cursor: pointer; }
+  .db-subtab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table.data-table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 12.5px; }
+  table.data-table thead th {
+    position: sticky; top: 0; background: var(--surface-2); text-align: left; padding: 10px 12px;
+    font-weight: 700; color: var(--ink-dim); text-transform: uppercase; font-size: 10.5px; letter-spacing: .05em;
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  table.data-table tbody td { padding: 9px 12px; border-bottom: 1px solid var(--line); color: var(--ink); white-space: nowrap; }
+  table.data-table tbody tr:hover { background: var(--surface-2); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+  .badge.novo { background: var(--novo-soft); color: var(--novo); }
+  .badge.rcp { background: var(--rcp-soft); color: var(--rcp); }
+  .badge.nd { background: var(--surface-2); color: var(--ink-faint); }
+  .row-count { font-size: 11.5px; color: var(--ink-faint); margin-top: 10px; font-weight: 500; }
+
+  /* Empty state */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 70px 20px; gap: 14px; border: 1px dashed var(--line-strong); border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .empty-state .icon { font-size: 44px; }
+  .empty-state h3 { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 700; }
+  .empty-state p { margin: 0; max-width: 440px; color: var(--ink-dim); font-size: 13.5px; line-height: 1.55; }
+
+  /* Toast */
+  #toast {
+    position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px);
+    background: var(--navy); color: #fff; padding: 12px 18px; border-radius: 9px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 100; opacity: 0; pointer-events: none; transition: all .25s ease;
+    display: flex; align-items: center; gap: 10px;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.err { background: var(--alert); }
+
+  #fileInput { display: none; }
+  .section-gap { margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark">🛞</div>
+      <div class="brand-text">
+        <h1>Controle de Pneus</h1>
+        <p>Novo Horizonte Logística</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="base-info">
+        <div class="lbl"><span id="syncDot" class="sync-dot"></span> BASE INFORMADA</div>
+        <div class="val" id="baseDate">—</div>
+      </div>
+      <button class="btn btn-header" id="btnImport">⭯ Importar planilha</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+    </div>
+  </div>
+</header>
+
+<nav class="tabbar">
+  <div class="tabbar-inner">
+    <button class="tab active" data-view="overview">Visão Geral</button>
+    <button class="tab" data-view="recap">Recapadoras</button>
+    <button class="tab" data-view="bydim">Por Dimensão</button>
+    <button class="tab" data-view="database">Base de Dados</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- VISÃO GERAL -->
+  <section class="view active" id="view-overview"></section>
+
+  <!-- RECAPADORAS -->
+  <section class="view" id="view-recap"></section>
+
+  <!-- POR DIMENSÃO -->
+  <section class="view" id="view-bydim"></section>
+
+  <!-- BASE DE DADOS -->
+  <section class="view" id="view-database"></section>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================== STATE ============================== */
+  var state = { estoque: [], recap: [], importedAt: null };
+  var db = { subtab: 'estoque', search: '', op: '', filial: '', status: '', fornecedor: '' };
+  var dimSelected = null;
+
+  /* ============================== FIREBASE ============================== */
+  var firebaseConfig = {
+    apiKey: "AIzaSyCyJv9wJZELJKNLVAYvY0D-nC__Ustkw60",
+    authDomain: "controle-pneus-94aba.firebaseapp.com",
+    projectId: "controle-pneus-94aba",
+    storageBucket: "controle-pneus-94aba.firebasestorage.app",
+    messagingSenderId: "47173263587",
+    appId: "1:47173263587:web:7352104558f603428d25d6"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var firestoreDb = firebase.firestore();
+  var dataDocRef = firestoreDb.collection('pneus').doc('current');
+  var firstSnapshot = true;
+
+  /* ============================== UTILS ============================== */
+  function stripAccents(s) { return s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+  function normHeader(s) {
+    return stripAccents(String(s || '')).toUpperCase().replace(/\s+/g, ' ').trim();
+  }
+  function toNum(v) {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    var s = String(v).trim().replace(',', '.');
+    var n = parseFloat(s);
+    return isFinite(n) ? n : 0;
+  }
+  function dimKey(raw) {
+    if (raw === null || raw === undefined) return null;
+    var s = String(raw).trim();
+    if (!s) return null;
+    return s.toUpperCase().replace(/\s+/g, '').replace(/,/g, '.');
+  }
+  function isTireDim(dim) { return dim && !/RODA/.test(dim); }
+  function normStatus(raw) {
+    var s = stripAccents(String(raw || '')).toUpperCase().trim();
+    if (s === 'NOVO') return 'NOVO';
+    if (s === 'RCP' || s === 'RECAPADO' || s === 'RECAPADA') return 'RCP';
+    return s || 'N/D';
+  }
+  function fmtInt(n) { return Math.round(n).toLocaleString('pt-BR'); }
+  function fmtPct(part, total) {
+    if (!total) return '0,0%';
+    return (part / total * 100).toFixed(1).replace('.', ',') + '%';
+  }
+  function escapeHtml(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function el(html) { var d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
+  function toast(msg, isErr) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = isErr ? 'show err' : 'show';
+    clearTimeout(toast._h);
+    toast._h = setTimeout(function () { t.className = t.className.replace('show', ''); }, 3200);
+  }
+
+  /* ============================== PERSISTENCE (FIRESTORE) ============================== */
+  function setSyncDot(mode) {
+    var dot = document.getElementById('syncDot');
+    if (!dot) return;
+    dot.className = 'sync-dot' + (mode === 'online' ? ' online' : mode === 'error' ? ' error' : '');
+    dot.title = mode === 'online' ? 'Sincronizado com o Firebase' : mode === 'error' ? 'Erro de conexão com o Firebase' : 'Conectando…';
+  }
+
+  function watchState() {
+    dataDocRef.onSnapshot(function (snap) {
+      setSyncDot('online');
+      if (snap.exists) {
+        var d = snap.data() || {};
+        state = {
+          estoque: Array.isArray(d.estoque) ? d.estoque : [],
+          recap: Array.isArray(d.recap) ? d.recap : [],
+          importedAt: d.importedAt || null
+        };
+      } else {
+        state = { estoque: [], recap: [], importedAt: null };
+      }
+      dimSelected = null;
+      renderAll();
+      if (!firstSnapshot) toast('Painel atualizado com a base mais recente.');
+      firstSnapshot = false;
+    }, function (err) {
+      console.error('firestore watch error', err);
+      setSyncDot('error');
+      toast('Não foi possível conectar ao banco de dados. Verifique sua conexão.', true);
+    });
+  }
+
+  function saveStateToFirestore(payload) {
+    return dataDocRef.set(payload);
+  }
+
+  /* ============================== PARSING ============================== */
+  var ESTOQUE_MAP = {
+    'OPERACAO': 'op', 'FILIAL': 'filial', 'DIMENSAO': 'dimensao', 'QNT': 'qnt',
+    'MODELO': 'modelo', 'STATUS': 'status', 'OBS': 'obs',
+    'MEDIA CONSUMO MES': 'consumo'
+  };
+  var RECAP_MAP = {
+    'FORNECEDOR': 'fornecedor', 'DIMENSAO': 'dimensao', 'QNT': 'qnt', 'MARCA': 'marca',
+    'MODELO': 'modelo', 'DOT': 'dot', 'DESENHO SOLICITADO': 'desenho', 'VIDA': 'vida',
+    'STATUS': 'status', 'CONTATO': 'contato', 'MEDIA CONSUMO MES': 'consumo'
+  };
+
+  function sheetHeaderSet(ws) {
+    var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true, range: 0 });
+    for (var i = 0; i < Math.min(3, rows.length); i++) {
+      var set = {};
+      (rows[i] || []).forEach(function (c) { if (c !== null) set[normHeader(c)] = true; });
+      if (set['FILIAL'] || set['FORNECEDOR']) return { set: set, headerRow: i, rows: rows };
+    }
+    return { set: {}, headerRow: 0, rows: rows };
+  }
+
+  function parseSheet(ws, map) {
+    var info = sheetHeaderSet(ws);
+    var header = info.rows[info.headerRow] || [];
+    var colIdx = {};
+    header.forEach(function (h, i) {
+      var key = map[normHeader(h)];
+      if (key && colIdx[key] === undefined) colIdx[key] = i;
+    });
+    var out = [];
+    for (var r = info.headerRow + 1; r < info.rows.length; r++) {
+      var row = info.rows[r];
+      if (!row) continue;
+      var rec = {};
+      var hasAny = false;
+      Object.keys(colIdx).forEach(function (key) {
+        var v = row[colIdx[key]];
+        if (v !== null && v !== undefined && String(v).trim() !== '') hasAny = true;
+        rec[key] = v;
+      });
+      if (!hasAny) continue;
+      out.push(rec);
+    }
+    return { records: out, headerFound: colIdx };
+  }
+
+  function buildEstoqueRecords(rawRows) {
+    var out = [];
+    rawRows.forEach(function (r, i) {
+      var filial = r.filial ? String(r.filial).trim() : '';
+      var dimRaw = r.dimensao ? String(r.dimensao).trim() : '';
+      var qnt = toNum(r.qnt);
+      if (!filial && !dimRaw) return;
+      out.push({
+        id: 'e' + i,
+        op: r.op ? String(r.op).trim() : '',
+        filial: filial || '(SEM FILIAL)',
+        dimensao: dimRaw ? dimKey(dimRaw) : '(SEM DIMENSÃO)',
+        qnt: qnt,
+        modelo: r.modelo ? String(r.modelo).trim() : '',
+        status: r.status ? normStatus(r.status) : 'N/D',
+        obs: r.obs ? String(r.obs).trim() : ''
+      });
+    });
+    return out;
+  }
+
+  function buildRecapRecords(rawRows) {
+    var out = [];
+    rawRows.forEach(function (r, i) {
+      var fornecedor = r.fornecedor ? String(r.fornecedor).trim() : '';
+      var dimRaw = r.dimensao ? String(r.dimensao).trim() : '';
+      var qnt = toNum(r.qnt);
+      if (!fornecedor) return;
+      out.push({
+        id: 'r' + i,
+        fornecedor: fornecedor,
+        dimensao: dimRaw ? dimKey(dimRaw) : '(SEM DIMENSÃO)',
+        qnt: qnt,
+        marca: r.marca ? String(r.marca).trim() : '',
+        modelo: r.modelo ? String(r.modelo).trim() : '',
+        dot: r.dot ? String(r.dot).trim() : '',
+        status: r.status ? String(r.status).trim() : ''
+      });
+    });
+    return out;
+  }
+
+  function parseWorkbook(wb) {
+    var estoqueSheetName = null, recapSheetName = null;
+    var estoqueCandidates = [], recapCandidates = [];
+
+    wb.SheetNames.forEach(function (name) {
+      var ws = wb.Sheets[name];
+      var info = sheetHeaderSet(ws);
+      var set = info.set;
+      var nName = normHeader(name);
+      if (set['FORNECEDOR'] && (set['QNT'] || set['QUANTIDADE'])) {
+        recapCandidates.push(name);
+        if (nName.indexOf('RECAP') !== -1) recapSheetName = name;
+      } else if (set['FILIAL'] && (set['DIMENSAO'] || set['DIMENSAO PNEU'])) {
+        estoqueCandidates.push(name);
+        if (nName.indexOf('GERAL') !== -1) estoqueSheetName = name;
+      }
+    });
+
+    var estoqueRaw = [];
+    if (estoqueSheetName) {
+      estoqueRaw = parseSheet(wb.Sheets[estoqueSheetName], ESTOQUE_MAP).records;
+    } else {
+      estoqueCandidates.forEach(function (name) {
+        estoqueRaw = estoqueRaw.concat(parseSheet(wb.Sheets[name], ESTOQUE_MAP).records);
+      });
+    }
+
+    var recapRaw = [];
+    if (recapSheetName) {
+      recapRaw = parseSheet(wb.Sheets[recapSheetName], RECAP_MAP).records;
+    } else {
+      recapCandidates.forEach(function (name) {
+        recapRaw = recapRaw.concat(parseSheet(wb.Sheets[name], RECAP_MAP).records);
+      });
+    }
+
+    return {
+      estoque: buildEstoqueRecords(estoqueRaw),
+      recap: buildRecapRecords(recapRaw),
+      meta: { estoqueSheetName: estoqueSheetName || estoqueCandidates.join(', ') || null,
+               recapSheetName: recapSheetName || recapCandidates.join(', ') || null }
+    };
+  }
+
+  /* ============================== AGGREGATION HELPERS ============================== */
+  function groupSum(arr, keyFn, valFn) {
+    var m = {};
+    arr.forEach(function (r) {
+      var k = keyFn(r);
+      if (k === null || k === undefined) return;
+      m[k] = (m[k] || 0) + valFn(r);
+    });
+    return m;
+  }
+  function sortedEntries(obj, desc) {
+    var arr = Object.keys(obj).map(function (k) { return [k, obj[k]]; }).filter(function (e) { return e[1] > 0; });
+    arr.sort(function (a, b) { return desc ? b[1] - a[1] : a[1] - b[1]; });
+    return arr;
+  }
+
+  /* ============================== RENDER: BAR CHARTS ============================== */
+  function renderBarH(items, opts) {
+    opts = opts || {};
+    var max = Math.max.apply(null, items.map(function (i) { return i[1]; }).concat([1])) || 1;
+    var color = opts.color || 'var(--teal)';
+    var html = '';
+    items.forEach(function (it) {
+      var pct = Math.max(2, (it[1] / max) * 100);
+      html += '<div class="barh-row">' +
+        '<span class="barh-label" title="' + escapeHtml(it[0]) + '">' + escapeHtml(it[0]) + '</span>' +
+        '<div class="barh-track"><div class="barh-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+        '<span class="barh-value">' + fmtInt(it[1]) + '</span>' +
+      '</div>';
+    });
+    return html || emptyMini();
+  }
+
+  function renderBarV(items, opts) {
+    opts = opts || {};
+    var max = Math.max.apply(null, items.map(function (i) { return i[1]; }).concat([1])) || 1;
+    var color = opts.color || 'var(--teal)';
+    var html = '<div class="barv-chart">';
+    items.forEach(function (it) {
+      var pct = Math.max(2, (it[1] / max) * 100);
+      html += '<div class="barv-col">' +
+        '<span class="barv-value">' + fmtInt(it[1]) + '</span>' +
+        '<div class="barv-bar" style="height:' + pct + '%;background:' + color + '"></div>' +
+        '<span class="barv-label">' + escapeHtml(it[0]) + '</span>' +
+      '</div>';
+    });
+    html += '</div>';
+    return items.length ? html : emptyMini();
+  }
+
+  function renderStack(items) {
+    // items: [{label, novo, rcp}]
+    var max = Math.max.apply(null, items.map(function (i) { return i.novo + i.rcp; }).concat([1])) || 1;
+    var html = '<div class="legend"><span><i class="dot novo"></i>Novo</span><span><i class="dot rcp"></i>Recapado (RCP)</span></div>';
+    items.forEach(function (it) {
+      var total = it.novo + it.rcp;
+      var pctNovo = total ? (it.novo / max) * 100 : 0;
+      var pctRcp = total ? (it.rcp / max) * 100 : 0;
+      html += '<div class="stack-row">' +
+        '<span class="stack-label" title="' + escapeHtml(it.label) + '">' + escapeHtml(it.label) + '</span>' +
+        '<div class="stack-track">' +
+          (it.novo ? '<div class="stack-seg novo" style="width:' + pctNovo + '%"></div>' : '') +
+          (it.rcp ? '<div class="stack-seg rcp" style="width:' + pctRcp + '%"></div>' : '') +
+        '</div>' +
+        '<span class="stack-value">' + fmtInt(total) + '</span>' +
+      '</div>';
+    });
+    return items.length ? html : emptyMini();
+  }
+
+  function emptyMini() { return '<p style="font-size:12.5px;color:var(--ink-faint);padding:20px 0;text-align:center;">Sem dados suficientes.</p>'; }
+
+  /* ============================== VIEW: OVERVIEW ============================== */
+  function renderOverview() {
+    var host = document.getElementById('view-overview');
+    var tireRecs = state.estoque.filter(function (r) { return isTireDim(r.dimensao); });
+    var rodaRecs = state.estoque.filter(function (r) { return !isTireDim(r.dimensao); });
+
+    if (!state.estoque.length && !state.recap.length) { host.innerHTML = emptyState(); return; }
+
+    var total = tireRecs.reduce(function (s, r) { return s + r.qnt; }, 0);
+    var novo = tireRecs.filter(function (r) { return r.status === 'NOVO'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
+    var rcp = tireRecs.filter(function (r) { return r.status === 'RCP'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
+    var rodas = rodaRecs.reduce(function (s, r) { return s + r.qnt; }, 0);
+
+    var byFilial = groupSum(tireRecs, function (r) { return r.filial; }, function (r) { return r.qnt; });
+    var filiaisAtivas = Object.keys(byFilial).filter(function (k) { return byFilial[k] > 0; });
+    var byDim = groupSum(tireRecs, function (r) { return r.dimensao; }, function (r) { return r.qnt; });
+
+    var filialSorted = sortedEntries(byFilial, true);
+    var dimSorted = sortedEntries(byDim, true);
+
+    var topFilial = filialSorted[0], topDim = dimSorted[0], secondDim = dimSorted[1];
+
+    // filiais 100% RCP (attention)
+    var filialStatus = {};
+    tireRecs.forEach(function (r) {
+      filialStatus[r.filial] = filialStatus[r.filial] || { novo: 0, rcp: 0 };
+      if (r.status === 'NOVO') filialStatus[r.filial].novo += r.qnt;
+      else if (r.status === 'RCP') filialStatus[r.filial].rcp += r.qnt;
+    });
+    var onlyRcp = Object.keys(filialStatus).filter(function (f) {
+      var s = filialStatus[f]; return s.rcp > 0 && s.novo === 0;
+    });
+
+    host.innerHTML =
+      '<div class="grid grid-kpi">' +
+        kpi(fmtInt(total), 'Pneus em estoque', rodas ? ('exclui ' + fmtInt(rodas) + ' rodas') : 'quantidade consolidada', 'c-navy') +
+        kpi(fmtInt(novo), 'Pneus novos', fmtPct(novo, total) + ' do estoque', 'c-novo') +
+        kpi(fmtInt(rcp), 'Recapados (RCP)', fmtPct(rcp, total) + ' do estoque', 'c-rcp') +
+        kpi(fmtInt(filiaisAtivas.length), 'Filiais', 'estoque consolidado', 'c-teal') +
+      '</div>' +
+      '<div class="grid grid-2 section-gap">' +
+        '<div class="panel"><h2>Estoque por Filial</h2>' + renderBarH(filialSorted, { color: 'var(--navy-2)' }) + '</div>' +
+        '<div class="panel"><h2>Principais Dimensões</h2>' + renderBarV(dimSorted.slice(0, 7), { color: 'var(--teal)' }) + '</div>' +
+      '</div>' +
+      '<div class="grid grid-3 section-gap">' +
+        '<div class="panel"><h2>Leitura Gerencial</h2><ul class="bullets">' +
+          (topFilial ? ('<li>' + escapeHtml(topFilial[0]) + ' concentra ' + fmtInt(topFilial[1]) + ' pneus (' + fmtPct(topFilial[1], total) + ').</li>') : '') +
+          (topDim ? ('<li>' + escapeHtml(topDim[0]) + ' é a maior dimensão: ' + fmtInt(topDim[1]) + ' un.</li>') : '') +
+          (secondDim ? ('<li>' + escapeHtml(secondDim[0]) + ' vem em seguida: ' + fmtInt(secondDim[1]) + ' un.</li>') : '') +
+        '</ul></div>' +
+        '<div class="panel"><h2>Status do Estoque</h2>' +
+          '<div class="progress-row"><div class="progress-head"><span>Novo</span><span>' + fmtPct(novo, total) + '</span></div>' +
+          '<div class="progress-track"><div class="progress-fill novo" style="width:' + (total ? (novo / total * 100) : 0) + '%"></div></div></div>' +
+          '<div class="progress-row"><div class="progress-head"><span>RCP</span><span>' + fmtPct(rcp, total) + '</span></div>' +
+          '<div class="progress-track"><div class="progress-fill rcp" style="width:' + (total ? (rcp / total * 100) : 0) + '%"></div></div></div>' +
+        '</div>' +
+        '<div class="panel"><h2>Pontos de Atenção</h2><ul class="bullets attn">' +
+          (onlyRcp.length ? onlyRcp.slice(0, 4).map(function (f) { return '<li>' + escapeHtml(f) + ': somente recapados (' + fmtInt(filialStatus[f].rcp) + ' RCP).</li>'; }).join('') : '<li>Nenhum ponto crítico identificado.</li>') +
+          (rodas ? ('<li>Há ' + fmtInt(rodas) + ' rodas registradas à parte.</li>') : '') +
+        '</ul></div>' +
+      '</div>';
+  }
+
+  function kpi(n, l, s, cls) {
+    return '<div class="kpi ' + cls + '"><div class="n">' + n + '</div><div class="l">' + escapeHtml(l) + '</div><div class="s">' + escapeHtml(s) + '</div></div>';
+  }
+
+  function emptyState() {
+    return '<div class="empty-state"><div class="icon">🛞</div>' +
+      '<h3>Nenhuma base importada</h3>' +
+      '<p>Importe a planilha de estoque de pneus para gerar os painéis automaticamente. O app lê as abas de estoque (com FILIAL e DIMENSÃO) e de recapadoras (com FORNECEDOR).</p>' +
+      '<button class="btn btn-primary" onclick="document.getElementById(\'btnImport\').click()">⭯ Importar planilha</button>' +
+    '</div>';
+  }
+
+  /* ============================== VIEW: RECAPADORAS ============================== */
+  function renderRecap() {
+    var host = document.getElementById('view-recap');
+    if (!state.recap.length) {
+      host.innerHTML = state.estoque.length
+        ? '<div class="empty-state"><div class="icon">🔧</div><h3>Nenhum dado de recapadoras</h3><p>A planilha importada não contém uma aba com fornecedores de recapagem (coluna FORNECEDOR). Importe uma base que inclua essa aba para ver este painel.</p></div>'
+        : emptyState();
+      return;
+    }
+    var total = state.recap.reduce(function (s, r) { return s + r.qnt; }, 0);
+    var byForn = groupSum(state.recap, function (r) { return r.fornecedor; }, function (r) { return r.qnt; });
+    var byDim = groupSum(state.recap, function (r) { return r.dimensao; }, function (r) { return r.qnt; });
+    var fornSorted = sortedEntries(byForn, true);
+    var dimSorted = sortedEntries(byDim, true);
+
+    var kpiDims = dimSorted.slice(0, 3);
+    var dimColors = ['c-rcp', 'c-teal', 'c-novo'];
+
+    // matrix fornecedor x dimensão
+    var matrix = {};
+    state.recap.forEach(function (r) {
+      matrix[r.fornecedor] = matrix[r.fornecedor] || {};
+      matrix[r.fornecedor][r.dimensao] = (matrix[r.fornecedor][r.dimensao] || 0) + r.qnt;
+    });
+
+    var matrixHtml = fornSorted.map(function (f) {
+      var forn = f[0];
+      var pairs = Object.keys(matrix[forn]).map(function (d) { return escapeHtml(d) + ' = <b>' + fmtInt(matrix[forn][d]) + '</b>'; }).join(' &nbsp;|&nbsp; ');
+      return '<div class="matrix-row"><span class="forn">' + escapeHtml(forn) + ':</span> <span class="pairs">' + pairs + '</span></div>';
+    }).join('');
+
+    var topForn = fornSorted[0], secondForn = fornSorted[1];
+    var top2Sum = (topForn ? topForn[1] : 0) + (secondForn ? secondForn[1] : 0);
+
+    host.innerHTML =
+      '<div class="grid grid-kpi">' +
+        kpi(fmtInt(total), 'Pneus nas recapadoras', 'quantidade consolidada', 'c-navy') +
+        kpiDims.map(function (d, i) { return kpi(fmtInt(d[1]), d[0], fmtPct(d[1], total) + ' do total', dimColors[i] || 'c-teal'); }).join('') +
+      '</div>' +
+      '<div class="grid grid-2 section-gap">' +
+        '<div class="panel"><h2>Volume por Recapadora</h2>' + renderBarH(fornSorted, { color: 'var(--navy-2)' }) + '</div>' +
+        '<div class="panel"><h2>Distribuição por Dimensão</h2>' + renderBarV(dimSorted, { color: 'var(--teal)' }) + '</div>' +
+      '</div>' +
+      '<div class="grid grid-2 section-gap">' +
+        '<div class="panel"><h2>Matriz Recapadora × Dimensão</h2>' + (matrixHtml || emptyMini()) + '</div>' +
+        '<div class="panel"><h2>Leitura Gerencial</h2><ul class="bullets">' +
+          (topForn ? ('<li>' + escapeHtml(topForn[0]) + ' concentra ' + fmtInt(topForn[1]) + ' pneus (' + fmtPct(topForn[1], total) + ').</li>') : '') +
+          (dimSorted[0] ? ('<li>' + escapeHtml(dimSorted[0][0]) + ' representa ' + fmtPct(dimSorted[0][1], total) + ' do volume.</li>') : '') +
+          (secondForn ? ('<li>' + escapeHtml(topForn[0]) + ' + ' + escapeHtml(secondForn[0]) + ' somam ' + fmtInt(top2Sum) + ' pneus.</li>') : '') +
+        '</ul></div>' +
+      '</div>';
+  }
+
+  /* ============================== VIEW: POR DIMENSÃO ============================== */
+  function renderByDim() {
+    var host = document.getElementById('view-bydim');
+    var tireRecs = state.estoque.filter(function (r) { return isTireDim(r.dimensao); });
+    if (!tireRecs.length) { host.innerHTML = emptyState(); return; }
+
+    var byDimTotal = groupSum(tireRecs, function (r) { return r.dimensao; }, function (r) { return r.qnt; });
+    var dims = sortedEntries(byDimTotal, true).map(function (d) { return d[0]; });
+    if (!dimSelected || dims.indexOf(dimSelected) === -1) dimSelected = dims[0];
+
+    var recs = tireRecs.filter(function (r) { return r.dimensao === dimSelected; });
+    var total = recs.reduce(function (s, r) { return s + r.qnt; }, 0);
+    var novo = recs.filter(function (r) { return r.status === 'NOVO'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
+    var rcp = recs.filter(function (r) { return r.status === 'RCP'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
+
+    var byFilial = {};
+    recs.forEach(function (r) {
+      byFilial[r.filial] = byFilial[r.filial] || { novo: 0, rcp: 0 };
+      if (r.status === 'NOVO') byFilial[r.filial].novo += r.qnt;
+      else if (r.status === 'RCP') byFilial[r.filial].rcp += r.qnt;
+      else byFilial[r.filial].rcp += 0;
+    });
+    var filiais = Object.keys(byFilial).filter(function (f) { return (byFilial[f].novo + byFilial[f].rcp) > 0; });
+    filiais.sort(function (a, b) { return (byFilial[b].novo + byFilial[b].rcp) - (byFilial[a].novo + byFilial[a].rcp); });
+
+    var stackItems = filiais.map(function (f) { return { label: f, novo: byFilial[f].novo, rcp: byFilial[f].rcp }; });
+
+    var summaryHtml = filiais.map(function (f) {
+      var d = byFilial[f];
+      return '<div class="filial-summary-row"><div><div class="fname">' + escapeHtml(f) + '</div>' +
+        '<div class="fbreak">Novo: ' + fmtInt(d.novo) + ' &nbsp;·&nbsp; RCP: ' + fmtInt(d.rcp) + '</div></div>' +
+        '<div class="ftotal">' + fmtInt(d.novo + d.rcp) + ' un.</div></div>';
+    }).join('');
+
+    host.innerHTML =
+      '<div class="dim-picker"><label for="dimSelect">Dimensão</label>' +
+        '<select id="dimSelect">' + dims.map(function (d) { return '<option value="' + escapeHtml(d) + '"' + (d === dimSelected ? ' selected' : '') + '>' + escapeHtml(d) + '</option>'; }).join('') + '</select>' +
+      '</div>' +
+      '<div class="grid grid-kpi">' +
+        kpi(fmtInt(total), 'Total ' + dimSelected, 'estoque consolidado', 'c-navy') +
+        kpi(fmtInt(novo), 'Novos', fmtPct(novo, total) + ' do total', 'c-novo') +
+        kpi(fmtInt(rcp), 'Recapados', fmtPct(rcp, total) + ' do total', 'c-rcp') +
+        kpi(fmtInt(filiais.length), 'Filiais', 'com esta dimensão', 'c-teal') +
+      '</div>' +
+      '<div class="grid grid-2 section-gap">' +
+        '<div class="panel"><h2>Distribuição por Filial e Status</h2>' + renderStack(stackItems) + '</div>' +
+        '<div class="panel"><h2>Resumo por Filial</h2>' + (summaryHtml || emptyMini()) + '</div>' +
+      '</div>';
+
+    var sel = document.getElementById('dimSelect');
+    if (sel) sel.addEventListener('change', function () { dimSelected = this.value; renderByDim(); });
+  }
+
+  /* ============================== VIEW: BASE DE DADOS ============================== */
+  function renderDatabase() {
+    var host = document.getElementById('view-database');
+    if (!state.estoque.length && !state.recap.length) { host.innerHTML = emptyState(); return; }
+
+    var ops = uniqueSorted(state.estoque.map(function (r) { return r.op; }).filter(Boolean));
+    var filiais = uniqueSorted(state.estoque.map(function (r) { return r.filial; }).filter(Boolean));
+    var fornecedores = uniqueSorted(state.recap.map(function (r) { return r.fornecedor; }).filter(Boolean));
+
+    host.innerHTML =
+      '<div class="db-subtabs">' +
+        '<button class="db-subtab' + (db.subtab === 'estoque' ? ' active' : '') + '" data-sub="estoque">Estoque (' + state.estoque.length + ')</button>' +
+        '<button class="db-subtab' + (db.subtab === 'recap' ? ' active' : '') + '" data-sub="recap">Recapadoras (' + state.recap.length + ')</button>' +
+      '</div>' +
+      '<div class="panel">' +
+        '<div class="db-toolbar">' +
+          '<input type="search" id="dbSearch" placeholder="Buscar por filial, dimensão, modelo, obs…" value="' + escapeHtml(db.search) + '">' +
+          (db.subtab === 'estoque' ?
+            ('<select id="fOp"><option value="">Operação (todas)</option>' + ops.map(function (o) { return '<option' + (o === db.op ? ' selected' : '') + '>' + escapeHtml(o) + '</option>'; }).join('') + '</select>' +
+             '<select id="fFilial"><option value="">Filial (todas)</option>' + filiais.map(function (f) { return '<option' + (f === db.filial ? ' selected' : '') + '>' + escapeHtml(f) + '</option>'; }).join('') + '</select>' +
+             '<select id="fStatus"><option value="">Status (todos)</option><option' + (db.status === 'NOVO' ? ' selected' : '') + '>NOVO</option><option' + (db.status === 'RCP' ? ' selected' : '') + '>RCP</option></select>')
+            :
+            ('<select id="fForn"><option value="">Fornecedor (todos)</option>' + fornecedores.map(function (f) { return '<option' + (f === db.fornecedor ? ' selected' : '') + '>' + escapeHtml(f) + '</option>'; }).join('')) + '</select>'
+          ) +
+          '<button class="btn btn-ghost btn-sm" id="btnExport">⭳ Exportar CSV</button>' +
+        '</div>' +
+        '<div id="dbTableHost"></div>' +
+      '</div>';
+
+    document.querySelectorAll('.db-subtab').forEach(function (b) {
+      b.addEventListener('click', function () { db.subtab = this.getAttribute('data-sub'); renderDatabase(); });
+    });
+    document.getElementById('dbSearch').addEventListener('input', function () { db.search = this.value; renderDbTable(); });
+    var fOp = document.getElementById('fOp'); if (fOp) fOp.addEventListener('change', function () { db.op = this.value; renderDbTable(); });
+    var fFilial = document.getElementById('fFilial'); if (fFilial) fFilial.addEventListener('change', function () { db.filial = this.value; renderDbTable(); });
+    var fStatus = document.getElementById('fStatus'); if (fStatus) fStatus.addEventListener('change', function () { db.status = this.value; renderDbTable(); });
+    var fForn = document.getElementById('fForn'); if (fForn) fForn.addEventListener('change', function () { db.fornecedor = this.value; renderDbTable(); });
+    document.getElementById('btnExport').addEventListener('click', exportCsv);
+
+    renderDbTable();
+  }
+
+  function uniqueSorted(arr) {
+    var s = {}; arr.forEach(function (a) { s[a] = true; });
+    return Object.keys(s).sort();
+  }
+
+  function filteredRows() {
+    var q = db.search.trim().toLowerCase();
+    if (db.subtab === 'estoque') {
+      return state.estoque.filter(function (r) {
+        if (db.op && r.op !== db.op) return false;
+        if (db.filial && r.filial !== db.filial) return false;
+        if (db.status && r.status !== db.status) return false;
+        if (q) {
+          var hay = (r.filial + ' ' + r.dimensao + ' ' + r.modelo + ' ' + r.obs + ' ' + r.op).toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+    } else {
+      return state.recap.filter(function (r) {
+        if (db.fornecedor && r.fornecedor !== db.fornecedor) return false;
+        if (q) {
+          var hay = (r.fornecedor + ' ' + r.dimensao + ' ' + r.marca + ' ' + r.modelo + ' ' + r.dot).toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+    }
+  }
+
+  function renderDbTable() {
+    var host = document.getElementById('dbTableHost');
+    if (!host) return;
+    var rows = filteredRows();
+    var html = '<div class="table-wrap"><table class="data-table"><thead><tr>';
+    if (db.subtab === 'estoque') {
+      html += '<th>Operação</th><th>Filial</th><th>Dimensão</th><th>Status</th><th>Qtd</th><th>Modelo</th><th>Obs</th></tr></thead><tbody>';
+      rows.forEach(function (r) {
+        html += '<tr><td>' + escapeHtml(r.op) + '</td><td>' + escapeHtml(r.filial) + '</td><td>' + escapeHtml(r.dimensao) + '</td>' +
+          '<td>' + statusBadge(r.status) + '</td><td>' + fmtInt(r.qnt) + '</td><td>' + escapeHtml(r.modelo) + '</td><td>' + escapeHtml(r.obs) + '</td></tr>';
+      });
+    } else {
+      html += '<th>Fornecedor</th><th>Dimensão</th><th>Qtd</th><th>Marca</th><th>Modelo</th><th>DOT</th><th>Status</th></tr></thead><tbody>';
+      rows.forEach(function (r) {
+        html += '<tr><td>' + escapeHtml(r.fornecedor) + '</td><td>' + escapeHtml(r.dimensao) + '</td><td>' + fmtInt(r.qnt) + '</td>' +
+          '<td>' + escapeHtml(r.marca) + '</td><td>' + escapeHtml(r.modelo) + '</td><td>' + escapeHtml(r.dot) + '</td><td>' + escapeHtml(r.status) + '</td></tr>';
+      });
+    }
+    html += '</tbody></table></div><div class="row-count">' + rows.length + ' registro(s)</div>';
+    host.innerHTML = html;
+  }
+
+  function statusBadge(s) {
+    var cls = s === 'NOVO' ? 'novo' : (s === 'RCP' ? 'rcp' : 'nd');
+    return '<span class="badge ' + cls + '">' + escapeHtml(s) + '</span>';
+  }
+
+  function csvEscape(v) {
+    var s = String(v === null || v === undefined ? '' : v);
+    if (/[";\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function exportCsv() {
+    var rows = filteredRows();
+    var lines = [];
+    if (db.subtab === 'estoque') {
+      lines.push(['Operacao', 'Filial', 'Dimensao', 'Status', 'Qtd', 'Modelo', 'Obs'].join(';'));
+      rows.forEach(function (r) { lines.push([r.op, r.filial, r.dimensao, r.status, r.qnt, r.modelo, r.obs].map(csvEscape).join(';')); });
+    } else {
+      lines.push(['Fornecedor', 'Dimensao', 'Qtd', 'Marca', 'Modelo', 'DOT', 'Status'].join(';'));
+      rows.forEach(function (r) { lines.push([r.fornecedor, r.dimensao, r.qnt, r.marca, r.modelo, r.dot, r.status].map(csvEscape).join(';')); });
+    }
+    var csv = '\uFEFF' + lines.join('\n');
+    var filename = 'controle_pneus_' + db.subtab + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+    try {
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      toast('Arquivo exportado.');
+    } catch (err) {
+      console.error(err);
+      toast('Não foi possível exportar agora.', true);
+    }
+  }
+
+  /* ============================== RENDER ALL ============================== */
+  function renderAll() {
+    var d = document.getElementById('baseDate');
+    d.textContent = state.importedAt ? new Date(state.importedAt).toLocaleDateString('pt-BR') : '—';
+    renderOverview();
+    renderRecap();
+    renderByDim();
+    renderDatabase();
+  }
+
+  /* ============================== TABS ============================== */
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('active'); });
+      document.querySelectorAll('.view').forEach(function (x) { x.classList.remove('active'); });
+      this.classList.add('active');
+      document.getElementById('view-' + this.getAttribute('data-view')).classList.add('active');
+    });
+  });
+
+  /* ============================== IMPORT FLOW ============================== */
+  document.getElementById('btnImport').addEventListener('click', function () {
+    document.getElementById('fileInput').click();
+  });
+
+  document.getElementById('fileInput').addEventListener('change', function (evt) {
+    var file = evt.target.files && evt.target.files[0];
+    if (!file) return;
+    var importBtn = document.getElementById('btnImport');
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var data = new Uint8Array(e.target.result);
+        var wb = XLSX.read(data, { type: 'array' });
+        var parsed = parseWorkbook(wb);
+        if (!parsed.estoque.length && !parsed.recap.length) {
+          toast('Não foi possível reconhecer a planilha. Verifique se há colunas FILIAL/DIMENSÃO ou FORNECEDOR.', true);
+          evt.target.value = '';
+          return;
+        }
+        importBtn.disabled = true;
+        importBtn.textContent = '⭯ Enviando…';
+        var payload = { estoque: parsed.estoque, recap: parsed.recap, importedAt: new Date().toISOString() };
+        saveStateToFirestore(payload).then(function () {
+          toast('Base importada: ' + parsed.estoque.length + ' registros de estoque, ' + parsed.recap.length + ' de recapadoras.');
+        }).catch(function (err) {
+          console.error(err);
+          toast('Falha ao salvar no banco de dados. Verifique sua conexão e tente novamente.', true);
+        }).finally(function () {
+          importBtn.disabled = false;
+          importBtn.textContent = '⭯ Importar planilha';
+        });
+      } catch (err) {
+        console.error(err);
+        toast('Erro ao ler a planilha. Confirme se é um arquivo .xlsx válido.', true);
+        importBtn.disabled = false;
+        importBtn.textContent = '⭯ Importar planilha';
+      } finally {
+        evt.target.value = '';
+      }
+    };
+    reader.onerror = function () { toast('Erro ao ler o arquivo.', true); };
+    reader.readAsArrayBuffer(file);
+  });
+
+  /* ============================== INIT ============================== */
+  function init() {
+    setSyncDot('connecting');
+    watchState();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
