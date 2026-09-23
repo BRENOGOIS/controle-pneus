@@ -443,6 +443,9 @@
     return s || 'N/D';
   }
   function fmtInt(n) { return Math.round(n).toLocaleString('pt-BR'); }
+  function titleCase(s) {
+    return String(s || '').toLowerCase().replace(/(^|\s)([a-zà-ú])/g, function (m, sep, c) { return sep + c.toUpperCase(); });
+  }
   function fmtPct(part, total) {
     if (!total) return '0,0%';
     return (part / total * 100).toFixed(1).replace('.', ',') + '%';
@@ -829,8 +832,9 @@
     var kpiDims = sortedEntries(groupSum(recapForKpi, function (r) { return r.dimensao; }, function (r) { return r.qnt; }), true).slice(0, 3);
     var dimColors = ['c-rcp', 'c-teal', 'c-novo'];
 
-    var recapado = recapForKpi.filter(function (r) { return r.status === 'RECAPADO'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
-    var recapando = recapForKpi.filter(function (r) { return r.status === 'RECAPANDO'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
+    var byStatus = groupSum(recapForKpi.filter(function (r) { return r.status; }), function (r) { return r.status; }, function (r) { return r.qnt; });
+    var statusSorted = sortedEntries(byStatus, true);
+    var statusColors = ['c-novo', 'c-rcp', 'c-teal', 'c-navy'];
 
     var byDesenho = groupSum(recapForDesenhoChart, function (r) { return r.desenho; }, function (r) { return r.qnt; });
     var desenhoSorted = sortedEntries(byDesenho, true);
@@ -841,10 +845,10 @@
         kpi(fmtInt(total), 'Pneus nas recapadoras', '', 'c-navy') +
         kpiDims.map(function (d, i) { return kpi(fmtInt(d[1]), d[0], fmtPct(d[1], total), dimColors[i] || 'c-teal'); }).join('') +
       '</div>' +
-      '<div class="grid grid-kpi2 section-gap">' +
-        kpi(fmtInt(recapado), 'Recapado', fmtPct(recapado, total), 'c-novo') +
-        kpi(fmtInt(recapando), 'Recapando', fmtPct(recapando, total), 'c-rcp') +
-      '</div>' +
+      (statusSorted.length ?
+      '<div class="grid grid-kpi section-gap">' +
+        statusSorted.map(function (s, i) { return kpi(fmtInt(s[1]), titleCase(s[0]), fmtPct(s[1], total), statusColors[i % statusColors.length]); }).join('') +
+      '</div>' : '') +
       '<div class="grid grid-2 section-gap">' +
         '<div class="panel"><h2>Volume por Recapadora</h2>' + renderBarH(fornSorted, { color: 'var(--navy-2)', total: total, filterType: 'fornecedor', activeValue: recapFilter.type === 'fornecedor' ? recapFilter.value : null }) + '</div>' +
         '<div class="panel"><h2>Distribuição por Dimensão</h2>' + renderBarV(dimSorted, { color: 'var(--teal)', total: total, filterType: 'dimensao', activeValue: recapFilter.type === 'dimensao' ? recapFilter.value : null }) + '</div>' +
