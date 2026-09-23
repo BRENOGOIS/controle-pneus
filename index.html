@@ -175,10 +175,11 @@
 
   .grid { display: grid; gap: 14px; }
   .grid-kpi { grid-template-columns: repeat(4, 1fr); }
+  .grid-kpi2 { grid-template-columns: repeat(2, 1fr); max-width: 520px; }
   .grid-2 { grid-template-columns: 1.3fr 1fr; }
   .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
   @media (max-width: 980px) { .grid-kpi { grid-template-columns: repeat(2, 1fr); } .grid-2, .grid-3 { grid-template-columns: 1fr; } }
-  @media (max-width: 560px) { .grid-kpi { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .grid-kpi { grid-template-columns: 1fr 1fr; } .grid-kpi2 { grid-template-columns: 1fr 1fr; } }
 
   .panel {
     background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
@@ -210,12 +211,12 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .barh-track { flex: 1; background: var(--surface-2); border-radius: 5px; height: 20px; overflow: hidden; position: relative; }
   .barh-fill { height: 100%; border-radius: 5px 0 0 5px; background: var(--teal); transition: width .5s ease; }
-  .barh-value { flex: 0 0 44px; font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; color: var(--ink); }
+  .barh-value { flex: 0 0 72px; font-family: var(--font-mono); font-weight: 600; font-size: 12px; color: var(--ink); text-align: right; }
 
   /* Vertical bar chart */
   .barv-chart { display: flex; align-items: flex-end; gap: 14px; height: 210px; padding-top: 10px; overflow-x: auto; }
-  .barv-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1 0 60px; height: 100%; min-width: 56px; }
-  .barv-value { font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; color: var(--ink); margin-bottom: 6px; }
+  .barv-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1 0 68px; height: 100%; min-width: 64px; }
+  .barv-value { font-family: var(--font-mono); font-weight: 600; font-size: 11px; color: var(--ink); margin-bottom: 6px; white-space: nowrap; }
   .barv-bar { width: 60%; max-width: 46px; border-radius: 4px 4px 0 0; background: var(--teal); min-height: 3px; transition: height .5s ease; }
   .barv-label { margin-top: 8px; font-size: 10.5px; font-weight: 600; color: var(--ink-dim); text-align: center; line-height: 1.25; }
 
@@ -226,7 +227,7 @@
   .stack-track { flex: 1; background: var(--surface-2); border-radius: 5px; height: 22px; overflow: hidden; display: flex; }
   .stack-seg.novo { background: var(--novo); }
   .stack-seg.rcp { background: var(--rcp); }
-  .stack-value { flex: 0 0 48px; font-family: var(--font-mono); font-weight: 600; font-size: 12.5px; color: var(--ink); }
+  .stack-value { flex: 0 0 72px; font-family: var(--font-mono); font-weight: 600; font-size: 12px; color: var(--ink); text-align: right; }
   .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; font-weight: 600; color: var(--ink-dim); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
@@ -414,6 +415,10 @@
     if (!total) return '0,0%';
     return (part / total * 100).toFixed(1).replace('.', ',') + '%';
   }
+  function fmtQtyPct(qty, total) {
+    var pct = total ? Math.round(qty / total * 100) : 0;
+    return fmtInt(qty) + '-' + pct + '%';
+  }
   function escapeHtml(s) {
     return String(s === null || s === undefined ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -547,7 +552,8 @@
         marca: r.marca ? String(r.marca).trim() : '',
         modelo: r.modelo ? String(r.modelo).trim() : '',
         dot: r.dot ? String(r.dot).trim() : '',
-        status: r.status ? String(r.status).trim() : ''
+        desenho: r.desenho ? String(r.desenho).trim() : '',
+        status: r.status ? String(r.status).trim().toUpperCase() : ''
       });
     });
     return out;
@@ -618,13 +624,15 @@
     opts = opts || {};
     var max = Math.max.apply(null, items.map(function (i) { return i[1]; }).concat([1])) || 1;
     var color = opts.color || 'var(--teal)';
+    var grandTotal = opts.total || 0;
     var html = '';
     items.forEach(function (it) {
       var pct = Math.max(2, (it[1] / max) * 100);
+      var valueText = grandTotal ? fmtQtyPct(it[1], grandTotal) : fmtInt(it[1]);
       html += '<div class="barh-row">' +
         '<span class="barh-label" title="' + escapeHtml(it[0]) + '">' + escapeHtml(it[0]) + '</span>' +
         '<div class="barh-track"><div class="barh-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
-        '<span class="barh-value">' + fmtInt(it[1]) + '</span>' +
+        '<span class="barh-value">' + valueText + '</span>' +
       '</div>';
     });
     return html || emptyMini();
@@ -634,11 +642,13 @@
     opts = opts || {};
     var max = Math.max.apply(null, items.map(function (i) { return i[1]; }).concat([1])) || 1;
     var color = opts.color || 'var(--teal)';
+    var grandTotal = opts.total || 0;
     var html = '<div class="barv-chart">';
     items.forEach(function (it) {
       var pct = Math.max(2, (it[1] / max) * 100);
+      var valueText = grandTotal ? fmtQtyPct(it[1], grandTotal) : fmtInt(it[1]);
       html += '<div class="barv-col">' +
-        '<span class="barv-value">' + fmtInt(it[1]) + '</span>' +
+        '<span class="barv-value">' + valueText + '</span>' +
         '<div class="barv-bar" style="height:' + pct + '%;background:' + color + '"></div>' +
         '<span class="barv-label">' + escapeHtml(it[0]) + '</span>' +
       '</div>';
@@ -647,21 +657,24 @@
     return items.length ? html : emptyMini();
   }
 
-  function renderStack(items) {
+  function renderStack(items, opts) {
     // items: [{label, novo, rcp}]
+    opts = opts || {};
+    var grandTotal = opts.total || 0;
     var max = Math.max.apply(null, items.map(function (i) { return i.novo + i.rcp; }).concat([1])) || 1;
     var html = '<div class="legend"><span><i class="dot novo"></i>Novo</span><span><i class="dot rcp"></i>Recapado (RCP)</span></div>';
     items.forEach(function (it) {
-      var total = it.novo + it.rcp;
-      var pctNovo = total ? (it.novo / max) * 100 : 0;
-      var pctRcp = total ? (it.rcp / max) * 100 : 0;
+      var itemTotal = it.novo + it.rcp;
+      var pctNovo = itemTotal ? (it.novo / max) * 100 : 0;
+      var pctRcp = itemTotal ? (it.rcp / max) * 100 : 0;
+      var valueText = grandTotal ? fmtQtyPct(itemTotal, grandTotal) : fmtInt(itemTotal);
       html += '<div class="stack-row">' +
         '<span class="stack-label" title="' + escapeHtml(it.label) + '">' + escapeHtml(it.label) + '</span>' +
         '<div class="stack-track">' +
           (it.novo ? '<div class="stack-seg novo" style="width:' + pctNovo + '%"></div>' : '') +
           (it.rcp ? '<div class="stack-seg rcp" style="width:' + pctRcp + '%"></div>' : '') +
         '</div>' +
-        '<span class="stack-value">' + fmtInt(total) + '</span>' +
+        '<span class="stack-value">' + valueText + '</span>' +
       '</div>';
     });
     return items.length ? html : emptyMini();
@@ -689,19 +702,6 @@
     var filialSorted = sortedEntries(byFilial, true);
     var dimSorted = sortedEntries(byDim, true);
 
-    var topFilial = filialSorted[0], topDim = dimSorted[0], secondDim = dimSorted[1];
-
-    // filiais 100% RCP (attention)
-    var filialStatus = {};
-    tireRecs.forEach(function (r) {
-      filialStatus[r.filial] = filialStatus[r.filial] || { novo: 0, rcp: 0 };
-      if (r.status === 'NOVO') filialStatus[r.filial].novo += r.qnt;
-      else if (r.status === 'RCP') filialStatus[r.filial].rcp += r.qnt;
-    });
-    var onlyRcp = Object.keys(filialStatus).filter(function (f) {
-      var s = filialStatus[f]; return s.rcp > 0 && s.novo === 0;
-    });
-
     host.innerHTML =
       '<div class="grid grid-kpi">' +
         kpi(fmtInt(total), 'Pneus em estoque', rodas ? ('exclui ' + fmtInt(rodas) + ' rodas') : 'quantidade consolidada', 'c-navy') +
@@ -710,25 +710,14 @@
         kpi(fmtInt(filiaisAtivas.length), 'Filiais', 'estoque consolidado', 'c-teal') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
-        '<div class="panel"><h2>Estoque por Filial</h2>' + renderBarH(filialSorted, { color: 'var(--navy-2)' }) + '</div>' +
-        '<div class="panel"><h2>Principais Dimensões</h2>' + renderBarV(dimSorted.slice(0, 7), { color: 'var(--teal)' }) + '</div>' +
+        '<div class="panel"><h2>Estoque por Filial</h2>' + renderBarH(filialSorted, { color: 'var(--navy-2)', total: total }) + '</div>' +
+        '<div class="panel"><h2>Principais Dimensões</h2>' + renderBarV(dimSorted.slice(0, 7), { color: 'var(--teal)', total: total }) + '</div>' +
       '</div>' +
-      '<div class="grid grid-3 section-gap">' +
-        '<div class="panel"><h2>Leitura Gerencial</h2><ul class="bullets">' +
-          (topFilial ? ('<li>' + escapeHtml(topFilial[0]) + ' concentra ' + fmtInt(topFilial[1]) + ' pneus (' + fmtPct(topFilial[1], total) + ').</li>') : '') +
-          (topDim ? ('<li>' + escapeHtml(topDim[0]) + ' é a maior dimensão: ' + fmtInt(topDim[1]) + ' un.</li>') : '') +
-          (secondDim ? ('<li>' + escapeHtml(secondDim[0]) + ' vem em seguida: ' + fmtInt(secondDim[1]) + ' un.</li>') : '') +
-        '</ul></div>' +
-        '<div class="panel"><h2>Status do Estoque</h2>' +
-          '<div class="progress-row"><div class="progress-head"><span>Novo</span><span>' + fmtPct(novo, total) + '</span></div>' +
-          '<div class="progress-track"><div class="progress-fill novo" style="width:' + (total ? (novo / total * 100) : 0) + '%"></div></div></div>' +
-          '<div class="progress-row"><div class="progress-head"><span>RCP</span><span>' + fmtPct(rcp, total) + '</span></div>' +
-          '<div class="progress-track"><div class="progress-fill rcp" style="width:' + (total ? (rcp / total * 100) : 0) + '%"></div></div></div>' +
-        '</div>' +
-        '<div class="panel"><h2>Pontos de Atenção</h2><ul class="bullets attn">' +
-          (onlyRcp.length ? onlyRcp.slice(0, 4).map(function (f) { return '<li>' + escapeHtml(f) + ': somente recapados (' + fmtInt(filialStatus[f].rcp) + ' RCP).</li>'; }).join('') : '<li>Nenhum ponto crítico identificado.</li>') +
-          (rodas ? ('<li>Há ' + fmtInt(rodas) + ' rodas registradas à parte.</li>') : '') +
-        '</ul></div>' +
+      '<div class="panel section-gap"><h2>Status do Estoque</h2>' +
+        '<div class="progress-row"><div class="progress-head"><span>Novo</span><span>' + fmtQtyPct(novo, total) + '</span></div>' +
+        '<div class="progress-track"><div class="progress-fill novo" style="width:' + (total ? (novo / total * 100) : 0) + '%"></div></div></div>' +
+        '<div class="progress-row"><div class="progress-head"><span>RCP</span><span>' + fmtQtyPct(rcp, total) + '</span></div>' +
+        '<div class="progress-track"><div class="progress-fill rcp" style="width:' + (total ? (rcp / total * 100) : 0) + '%"></div></div></div>' +
       '</div>';
   }
 
@@ -762,38 +751,28 @@
     var kpiDims = dimSorted.slice(0, 3);
     var dimColors = ['c-rcp', 'c-teal', 'c-novo'];
 
-    // matrix fornecedor x dimensão
-    var matrix = {};
-    state.recap.forEach(function (r) {
-      matrix[r.fornecedor] = matrix[r.fornecedor] || {};
-      matrix[r.fornecedor][r.dimensao] = (matrix[r.fornecedor][r.dimensao] || 0) + r.qnt;
-    });
+    var recapado = state.recap.filter(function (r) { return r.status === 'RECAPADO'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
+    var recapando = state.recap.filter(function (r) { return r.status === 'RECAPANDO'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
 
-    var matrixHtml = fornSorted.map(function (f) {
-      var forn = f[0];
-      var pairs = Object.keys(matrix[forn]).map(function (d) { return escapeHtml(d) + ' = <b>' + fmtInt(matrix[forn][d]) + '</b>'; }).join(' &nbsp;|&nbsp; ');
-      return '<div class="matrix-row"><span class="forn">' + escapeHtml(forn) + ':</span> <span class="pairs">' + pairs + '</span></div>';
-    }).join('');
-
-    var topForn = fornSorted[0], secondForn = fornSorted[1];
-    var top2Sum = (topForn ? topForn[1] : 0) + (secondForn ? secondForn[1] : 0);
+    var byDesenho = groupSum(state.recap.filter(function (r) { return r.desenho; }), function (r) { return r.desenho; }, function (r) { return r.qnt; });
+    var desenhoSorted = sortedEntries(byDesenho, true);
+    var desenhoTotal = desenhoSorted.reduce(function (s, e) { return s + e[1]; }, 0);
 
     host.innerHTML =
       '<div class="grid grid-kpi">' +
         kpi(fmtInt(total), 'Pneus nas recapadoras', 'quantidade consolidada', 'c-navy') +
         kpiDims.map(function (d, i) { return kpi(fmtInt(d[1]), d[0], fmtPct(d[1], total) + ' do total', dimColors[i] || 'c-teal'); }).join('') +
       '</div>' +
-      '<div class="grid grid-2 section-gap">' +
-        '<div class="panel"><h2>Volume por Recapadora</h2>' + renderBarH(fornSorted, { color: 'var(--navy-2)' }) + '</div>' +
-        '<div class="panel"><h2>Distribuição por Dimensão</h2>' + renderBarV(dimSorted, { color: 'var(--teal)' }) + '</div>' +
+      '<div class="grid grid-kpi2 section-gap">' +
+        kpi(fmtInt(recapado), 'Recapado', fmtPct(recapado, total) + ' do total', 'c-novo') +
+        kpi(fmtInt(recapando), 'Recapando', fmtPct(recapando, total) + ' do total', 'c-rcp') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
-        '<div class="panel"><h2>Matriz Recapadora × Dimensão</h2>' + (matrixHtml || emptyMini()) + '</div>' +
-        '<div class="panel"><h2>Leitura Gerencial</h2><ul class="bullets">' +
-          (topForn ? ('<li>' + escapeHtml(topForn[0]) + ' concentra ' + fmtInt(topForn[1]) + ' pneus (' + fmtPct(topForn[1], total) + ').</li>') : '') +
-          (dimSorted[0] ? ('<li>' + escapeHtml(dimSorted[0][0]) + ' representa ' + fmtPct(dimSorted[0][1], total) + ' do volume.</li>') : '') +
-          (secondForn ? ('<li>' + escapeHtml(topForn[0]) + ' + ' + escapeHtml(secondForn[0]) + ' somam ' + fmtInt(top2Sum) + ' pneus.</li>') : '') +
-        '</ul></div>' +
+        '<div class="panel"><h2>Volume por Recapadora</h2>' + renderBarH(fornSorted, { color: 'var(--navy-2)', total: total }) + '</div>' +
+        '<div class="panel"><h2>Distribuição por Dimensão</h2>' + renderBarV(dimSorted, { color: 'var(--teal)', total: total }) + '</div>' +
+      '</div>' +
+      '<div class="panel section-gap"><h2>Distribuição por Desenho</h2>' +
+        (desenhoSorted.length ? renderBarV(desenhoSorted, { color: 'var(--navy-2)', total: desenhoTotal }) : '<p style="font-size:12.5px;color:var(--ink-faint);padding:10px 0;">Nenhum registro com desenho solicitado informado na base.</p>') +
       '</div>';
   }
 
@@ -842,7 +821,7 @@
         kpi(fmtInt(filiais.length), 'Filiais', 'com esta dimensão', 'c-teal') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
-        '<div class="panel"><h2>Distribuição por Filial e Status</h2>' + renderStack(stackItems) + '</div>' +
+        '<div class="panel"><h2>Distribuição por Filial e Status</h2>' + renderStack(stackItems, { total: total }) + '</div>' +
         '<div class="panel"><h2>Resumo por Filial</h2>' + (summaryHtml || emptyMini()) + '</div>' +
       '</div>';
 
@@ -914,7 +893,7 @@
       return state.recap.filter(function (r) {
         if (db.fornecedor && r.fornecedor !== db.fornecedor) return false;
         if (q) {
-          var hay = (r.fornecedor + ' ' + r.dimensao + ' ' + r.marca + ' ' + r.modelo + ' ' + r.dot).toLowerCase();
+          var hay = (r.fornecedor + ' ' + r.dimensao + ' ' + r.marca + ' ' + r.modelo + ' ' + r.dot + ' ' + r.desenho).toLowerCase();
           if (hay.indexOf(q) === -1) return false;
         }
         return true;
@@ -934,10 +913,10 @@
           '<td>' + statusBadge(r.status) + '</td><td>' + fmtInt(r.qnt) + '</td><td>' + escapeHtml(r.modelo) + '</td><td>' + escapeHtml(r.obs) + '</td></tr>';
       });
     } else {
-      html += '<th>Fornecedor</th><th>Dimensão</th><th>Qtd</th><th>Marca</th><th>Modelo</th><th>DOT</th><th>Status</th></tr></thead><tbody>';
+      html += '<th>Fornecedor</th><th>Dimensão</th><th>Qtd</th><th>Marca</th><th>Modelo</th><th>DOT</th><th>Desenho</th><th>Status</th></tr></thead><tbody>';
       rows.forEach(function (r) {
         html += '<tr><td>' + escapeHtml(r.fornecedor) + '</td><td>' + escapeHtml(r.dimensao) + '</td><td>' + fmtInt(r.qnt) + '</td>' +
-          '<td>' + escapeHtml(r.marca) + '</td><td>' + escapeHtml(r.modelo) + '</td><td>' + escapeHtml(r.dot) + '</td><td>' + escapeHtml(r.status) + '</td></tr>';
+          '<td>' + escapeHtml(r.marca) + '</td><td>' + escapeHtml(r.modelo) + '</td><td>' + escapeHtml(r.dot) + '</td><td>' + escapeHtml(r.desenho) + '</td><td>' + escapeHtml(r.status) + '</td></tr>';
       });
     }
     html += '</tbody></table></div><div class="row-count">' + rows.length + ' registro(s)</div>';
@@ -962,8 +941,8 @@
       lines.push(['Operacao', 'Filial', 'Dimensao', 'Status', 'Qtd', 'Modelo', 'Obs'].join(';'));
       rows.forEach(function (r) { lines.push([r.op, r.filial, r.dimensao, r.status, r.qnt, r.modelo, r.obs].map(csvEscape).join(';')); });
     } else {
-      lines.push(['Fornecedor', 'Dimensao', 'Qtd', 'Marca', 'Modelo', 'DOT', 'Status'].join(';'));
-      rows.forEach(function (r) { lines.push([r.fornecedor, r.dimensao, r.qnt, r.marca, r.modelo, r.dot, r.status].map(csvEscape).join(';')); });
+      lines.push(['Fornecedor', 'Dimensao', 'Qtd', 'Marca', 'Modelo', 'DOT', 'Desenho', 'Status'].join(';'));
+      rows.forEach(function (r) { lines.push([r.fornecedor, r.dimensao, r.qnt, r.marca, r.modelo, r.dot, r.desenho, r.status].map(csvEscape).join(';')); });
     }
     var csv = '\uFEFF' + lines.join('\n');
     var filename = 'controle_pneus_' + db.subtab + '_' + new Date().toISOString().slice(0, 10) + '.csv';
