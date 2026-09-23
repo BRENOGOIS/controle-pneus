@@ -208,6 +208,11 @@
   .kpi.c-rcp { border-left-color: var(--rcp); }
   .kpi.c-teal { border-left-color: var(--teal); }
   .kpi.c-navy { border-left-color: var(--navy); }
+  .kpi-clickable { cursor: pointer; transition: transform .1s ease, box-shadow .12s ease, opacity .15s ease; }
+  .kpi-clickable:hover { box-shadow: 0 4px 14px rgba(11,42,69,.12); transform: translateY(-1px); }
+  .kpi-clickable:active { transform: translateY(0); }
+  .kpi.is-active { outline: 2px solid var(--navy); outline-offset: -1px; }
+  .kpi.is-dimmed { opacity: .45; }
 
   /* Horizontal bar chart */
   .barh-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
@@ -396,7 +401,7 @@
   var dimSelected = null;
   var overviewFilter = { type: null, value: null };  // type: 'filial' | 'dimensao'
   var recapFilter = { type: null, value: null };      // type: 'fornecedor' | 'dimensao' | 'desenho'
-  var bydimFilialFilter = null;                        // string filial, within the selected dimension
+  var bydimFilter = { type: null, value: null };         // type: 'filial' | 'status', within the selected dimension
 
   function applyAllFilter(recs, filter) {
     if (!filter || !filter.type) return recs;
@@ -496,7 +501,7 @@
       dimSelected = null;
       overviewFilter = { type: null, value: null };
       recapFilter = { type: null, value: null };
-      bydimFilialFilter = null;
+      bydimFilter = { type: null, value: null };
       renderAll();
       if (!firstSnapshot) toast('Painel atualizado com a base mais recente.');
       firstSnapshot = false;
@@ -767,11 +772,13 @@
     var filialSorted = sortedEntries(byFilial, true);
     var dimSorted = sortedEntries(byDim, true);
 
+    var statusFilterActive = overviewFilter.type === 'status';
+
     host.innerHTML =
       '<div class="grid grid-kpi">' +
         kpi(fmtInt(total), 'Pneus em estoque', '', 'c-navy') +
-        kpi(fmtInt(novo), 'Pneus novos', fmtPct(novo, total), 'c-novo') +
-        kpi(fmtInt(rcp), 'Recapados (RCP)', fmtPct(rcp, total), 'c-rcp') +
+        kpi(fmtInt(novo), 'Pneus novos', fmtPct(novo, total), 'c-novo', { filterType: 'status', filterValue: 'NOVO', isActive: statusFilterActive && overviewFilter.value === 'NOVO', isDimmed: statusFilterActive && overviewFilter.value !== 'NOVO' }) +
+        kpi(fmtInt(rcp), 'Recapados (RCP)', fmtPct(rcp, total), 'c-rcp', { filterType: 'status', filterValue: 'RCP', isActive: statusFilterActive && overviewFilter.value === 'RCP', isDimmed: statusFilterActive && overviewFilter.value !== 'RCP' }) +
         kpi(fmtInt(filiaisAtivas.length), 'Filiais', '', 'c-teal') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
@@ -799,8 +806,12 @@
     }
   }
 
-  function kpi(n, l, s, cls) {
-    return '<div class="kpi ' + cls + '"><div class="n">' + n + '</div><div class="l">' + escapeHtml(l) + '</div>' +
+  function kpi(n, l, s, cls, opts) {
+    opts = opts || {};
+    var clickable = !!opts.filterType;
+    var classes = 'kpi ' + cls + (clickable ? ' kpi-clickable' : '') + (opts.isActive ? ' is-active' : '') + (opts.isDimmed ? ' is-dimmed' : '');
+    var attrs = clickable ? (' data-filter-type="' + escapeHtml(opts.filterType) + '" data-filter-value="' + escapeHtml(opts.filterValue) + '"') : '';
+    return '<div class="' + classes + '"' + attrs + '><div class="n">' + n + '</div><div class="l">' + escapeHtml(l) + '</div>' +
       (s ? '<div class="s">' + escapeHtml(s) + '</div>' : '') + '</div>';
   }
 
@@ -847,11 +858,23 @@
     host.innerHTML =
       '<div class="grid grid-kpi">' +
         kpi(fmtInt(total), 'Pneus nas recapadoras', '', 'c-navy') +
-        kpiDims.map(function (d, i) { return kpi(fmtInt(d[1]), d[0], fmtPct(d[1], total), dimColors[i] || 'c-teal'); }).join('') +
+        kpiDims.map(function (d, i) {
+          return kpi(fmtInt(d[1]), d[0], fmtPct(d[1], total), dimColors[i] || 'c-teal', {
+            filterType: 'dimensao', filterValue: d[0],
+            isActive: recapFilter.type === 'dimensao' && recapFilter.value === d[0],
+            isDimmed: recapFilter.type === 'dimensao' && recapFilter.value !== d[0]
+          });
+        }).join('') +
       '</div>' +
       (statusSorted.length ?
       '<div class="grid grid-kpi section-gap">' +
-        statusSorted.map(function (s, i) { return kpi(fmtInt(s[1]), titleCase(s[0]), fmtPct(s[1], total), statusColors[i % statusColors.length]); }).join('') +
+        statusSorted.map(function (s, i) {
+          return kpi(fmtInt(s[1]), titleCase(s[0]), fmtPct(s[1], total), statusColors[i % statusColors.length], {
+            filterType: 'status', filterValue: s[0],
+            isActive: recapFilter.type === 'status' && recapFilter.value === s[0],
+            isDimmed: recapFilter.type === 'status' && recapFilter.value !== s[0]
+          });
+        }).join('') +
       '</div>' : '') +
       '<div class="grid grid-2 section-gap">' +
         '<div class="panel"><h2>Volume por Recapadora</h2>' + renderBarH(fornSorted, { color: 'var(--navy-2)', total: total, filterType: 'fornecedor', activeValue: recapFilter.type === 'fornecedor' ? recapFilter.value : null }) + '</div>' +
@@ -886,14 +909,15 @@
     if (!dimSelected || dims.indexOf(dimSelected) === -1) dimSelected = dims[0];
 
     var recs = tireRecs.filter(function (r) { return r.dimensao === dimSelected; });
-    var recsForKpi = bydimFilialFilter ? recs.filter(function (r) { return r.filial === bydimFilialFilter; }) : recs;
+    var recsForKpi = applyAllFilter(recs, bydimFilter);
+    var recsForFilialChart = applyExceptFilter(recs, bydimFilter, 'filial');
     var total = recsForKpi.reduce(function (s, r) { return s + r.qnt; }, 0);
     var novo = recsForKpi.filter(function (r) { return r.status === 'NOVO'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
     var rcp = recsForKpi.filter(function (r) { return r.status === 'RCP'; }).reduce(function (s, r) { return s + r.qnt; }, 0);
 
-    // chart (owner of the filial axis) always reflects the full dimension, unfiltered
+    // chart (owner of the filial axis) reflects the dimension, cross-filtered by status if that's active
     var byFilial = {};
-    recs.forEach(function (r) {
+    recsForFilialChart.forEach(function (r) {
       byFilial[r.filial] = byFilial[r.filial] || { novo: 0, rcp: 0 };
       if (r.status === 'NOVO') byFilial[r.filial].novo += r.qnt;
       else if (r.status === 'RCP') byFilial[r.filial].rcp += r.qnt;
@@ -904,7 +928,7 @@
     var stackItems = filiais.map(function (f) { return { label: f, novo: byFilial[f].novo, rcp: byFilial[f].rcp }; });
     var dimTotal = filiais.reduce(function (s, f) { return s + byFilial[f].novo + byFilial[f].rcp; }, 0);
 
-    // summary list reflects the filial cross-filter
+    // summary list reflects the full active filter
     var byFilialKpi = {};
     recsForKpi.forEach(function (r) {
       byFilialKpi[r.filial] = byFilialKpi[r.filial] || { novo: 0, rcp: 0 };
@@ -921,30 +945,35 @@
         '<div class="ftotal">' + fmtInt(d.novo + d.rcp) + ' un.</div></div>';
     }).join('');
 
+    var statusFilterActive = bydimFilter.type === 'status';
+    var bydimFilialValue = bydimFilter.type === 'filial' ? bydimFilter.value : null;
+
     host.innerHTML =
       '<div class="dim-picker"><label for="dimSelect">Dimensão</label>' +
         '<select id="dimSelect">' + dims.map(function (d) { return '<option value="' + escapeHtml(d) + '"' + (d === dimSelected ? ' selected' : '') + '>' + escapeHtml(d) + '</option>'; }).join('') + '</select>' +
       '</div>' +
       '<div class="grid grid-kpi">' +
         kpi(fmtInt(total), 'Total ' + dimSelected, '', 'c-navy') +
-        kpi(fmtInt(novo), 'Novos', fmtPct(novo, total), 'c-novo') +
-        kpi(fmtInt(rcp), 'Recapados', fmtPct(rcp, total), 'c-rcp') +
+        kpi(fmtInt(novo), 'Novos', fmtPct(novo, total), 'c-novo', { filterType: 'status', filterValue: 'NOVO', isActive: statusFilterActive && bydimFilter.value === 'NOVO', isDimmed: statusFilterActive && bydimFilter.value !== 'NOVO' }) +
+        kpi(fmtInt(rcp), 'Recapados', fmtPct(rcp, total), 'c-rcp', { filterType: 'status', filterValue: 'RCP', isActive: statusFilterActive && bydimFilter.value === 'RCP', isDimmed: statusFilterActive && bydimFilter.value !== 'RCP' }) +
         kpi(fmtInt(filiaisSummary.length), 'Filiais', '', 'c-teal') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
-        '<div class="panel"><h2>Distribuição por Filial e Status</h2>' + renderStack(stackItems, { total: dimTotal, filterType: 'filial', activeValue: bydimFilialFilter }) + '</div>' +
+        '<div class="panel"><h2>Distribuição por Filial e Status</h2>' + renderStack(stackItems, { total: dimTotal, filterType: 'filial', activeValue: bydimFilialValue }) + '</div>' +
         '<div class="panel"><h2>Resumo por Filial</h2>' + (summaryHtml || emptyMini()) + '</div>' +
       '</div>';
 
     var sel = document.getElementById('dimSelect');
-    if (sel) sel.addEventListener('change', function () { dimSelected = this.value; bydimFilialFilter = null; renderByDim(); });
+    if (sel) sel.addEventListener('change', function () { dimSelected = this.value; bydimFilter = { type: null, value: null }; renderByDim(); });
 
     if (!host.dataset.boundClicks) {
       host.addEventListener('click', function (e) {
-        var item = e.target.closest('[data-filter-type="filial"]');
+        var item = e.target.closest('[data-filter-type]');
         if (!item) return;
+        var type = item.getAttribute('data-filter-type');
         var value = item.getAttribute('data-filter-value');
-        bydimFilialFilter = (bydimFilialFilter === value) ? null : value;
+        bydimFilter = (bydimFilter.type === type && bydimFilter.value === value)
+          ? { type: null, value: null } : { type: type, value: value };
         renderByDim();
       });
       host.dataset.boundClicks = '1';
