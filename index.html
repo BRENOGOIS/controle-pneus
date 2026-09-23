@@ -249,16 +249,6 @@
   .stack-row.is-active .stack-track { outline: 2px solid var(--navy); outline-offset: -2px; }
   .stack-row.is-dimmed { opacity: .4; }
 
-  .filter-chip {
-    display: inline-flex; align-items: center; gap: 8px; background: var(--teal-soft); color: var(--teal);
-    border: 1px solid var(--teal); border-radius: 999px; padding: 6px 8px 6px 14px; font-size: 12.5px; font-weight: 600;
-    margin-bottom: 14px;
-  }
-  .chip-clear {
-    appearance: none; border: none; background: var(--teal); color: #fff; width: 20px; height: 20px; border-radius: 50%;
-    cursor: pointer; font-size: 11px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
-  }
-  .chip-clear:hover { filter: brightness(1.1); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
   .dot.novo { background: var(--novo); } .dot.rcp { background: var(--rcp); }
@@ -411,11 +401,6 @@
   function applyExceptFilter(recs, filter, ownType) {
     if (!filter || !filter.type || filter.type === ownType) return recs;
     return applyAllFilter(recs, filter);
-  }
-  function filterChip(label, onClearId) {
-    if (!label) return '';
-    return '<div class="filter-chip">Filtrando por: <b>' + escapeHtml(label) + '</b>' +
-      '<button type="button" class="chip-clear" id="' + onClearId + '">✕</button></div>';
   }
 
   /* ============================== FIREBASE ============================== */
@@ -775,15 +760,12 @@
     var filialSorted = sortedEntries(byFilial, true);
     var dimSorted = sortedEntries(byDim, true);
 
-    var chipLabel = overviewFilter.type ? overviewFilter.value : null;
-
     host.innerHTML =
-      filterChip(chipLabel, 'ovClearChip') +
       '<div class="grid grid-kpi">' +
-        kpi(fmtInt(total), 'Pneus em estoque', rodas ? ('exclui ' + fmtInt(rodas) + ' rodas') : 'quantidade consolidada', 'c-navy') +
-        kpi(fmtInt(novo), 'Pneus novos', fmtPct(novo, total) + ' do estoque', 'c-novo') +
-        kpi(fmtInt(rcp), 'Recapados (RCP)', fmtPct(rcp, total) + ' do estoque', 'c-rcp') +
-        kpi(fmtInt(filiaisAtivas.length), 'Filiais', 'estoque consolidado', 'c-teal') +
+        kpi(fmtInt(total), 'Pneus em estoque', '', 'c-navy') +
+        kpi(fmtInt(novo), 'Pneus novos', fmtPct(novo, total), 'c-novo') +
+        kpi(fmtInt(rcp), 'Recapados (RCP)', fmtPct(rcp, total), 'c-rcp') +
+        kpi(fmtInt(filiaisAtivas.length), 'Filiais', '', 'c-teal') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
         '<div class="panel"><h2>Estoque por Filial</h2>' + renderBarH(filialSorted, { color: 'var(--navy-2)', total: total, filterType: 'filial', activeValue: overviewFilter.type === 'filial' ? overviewFilter.value : null }) + '</div>' +
@@ -795,9 +777,6 @@
         '<div class="progress-row"><div class="progress-head"><span>RCP</span><span>' + fmtQtyPct(rcp, total) + '</span></div>' +
         '<div class="progress-track"><div class="progress-fill rcp" style="width:' + (total ? (rcp / total * 100) : 0) + '%"></div></div></div>' +
       '</div>';
-
-    var clearBtn = document.getElementById('ovClearChip');
-    if (clearBtn) clearBtn.addEventListener('click', function () { overviewFilter = { type: null, value: null }; renderOverview(); });
 
     if (!host.dataset.boundClicks) {
       host.addEventListener('click', function (e) {
@@ -814,7 +793,8 @@
   }
 
   function kpi(n, l, s, cls) {
-    return '<div class="kpi ' + cls + '"><div class="n">' + n + '</div><div class="l">' + escapeHtml(l) + '</div><div class="s">' + escapeHtml(s) + '</div></div>';
+    return '<div class="kpi ' + cls + '"><div class="n">' + n + '</div><div class="l">' + escapeHtml(l) + '</div>' +
+      (s ? '<div class="s">' + escapeHtml(s) + '</div>' : '') + '</div>';
   }
 
   function emptyState() {
@@ -856,17 +836,14 @@
     var desenhoSorted = sortedEntries(byDesenho, true);
     var desenhoTotal = desenhoSorted.reduce(function (s, e) { return s + e[1]; }, 0);
 
-    var chipLabel = recapFilter.type ? recapFilter.value : null;
-
     host.innerHTML =
-      filterChip(chipLabel, 'rcClearChip') +
       '<div class="grid grid-kpi">' +
-        kpi(fmtInt(total), 'Pneus nas recapadoras', 'quantidade consolidada', 'c-navy') +
-        kpiDims.map(function (d, i) { return kpi(fmtInt(d[1]), d[0], fmtPct(d[1], total) + ' do total', dimColors[i] || 'c-teal'); }).join('') +
+        kpi(fmtInt(total), 'Pneus nas recapadoras', '', 'c-navy') +
+        kpiDims.map(function (d, i) { return kpi(fmtInt(d[1]), d[0], fmtPct(d[1], total), dimColors[i] || 'c-teal'); }).join('') +
       '</div>' +
       '<div class="grid grid-kpi2 section-gap">' +
-        kpi(fmtInt(recapado), 'Recapado', fmtPct(recapado, total) + ' do total', 'c-novo') +
-        kpi(fmtInt(recapando), 'Recapando', fmtPct(recapando, total) + ' do total', 'c-rcp') +
+        kpi(fmtInt(recapado), 'Recapado', fmtPct(recapado, total), 'c-novo') +
+        kpi(fmtInt(recapando), 'Recapando', fmtPct(recapando, total), 'c-rcp') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
         '<div class="panel"><h2>Volume por Recapadora</h2>' + renderBarH(fornSorted, { color: 'var(--navy-2)', total: total, filterType: 'fornecedor', activeValue: recapFilter.type === 'fornecedor' ? recapFilter.value : null }) + '</div>' +
@@ -875,9 +852,6 @@
       '<div class="panel section-gap"><h2>Distribuição por Desenho</h2>' +
         (desenhoSorted.length ? renderBarV(desenhoSorted, { color: 'var(--navy-2)', total: desenhoTotal, filterType: 'desenho', activeValue: recapFilter.type === 'desenho' ? recapFilter.value : null }) : '<p style="font-size:12.5px;color:var(--ink-faint);padding:10px 0;">Nenhum registro com desenho solicitado informado na base.</p>') +
       '</div>';
-
-    var clearBtn = document.getElementById('rcClearChip');
-    if (clearBtn) clearBtn.addEventListener('click', function () { recapFilter = { type: null, value: null }; renderRecap(); });
 
     if (!host.dataset.boundClicks) {
       host.addEventListener('click', function (e) {
@@ -943,12 +917,11 @@
       '<div class="dim-picker"><label for="dimSelect">Dimensão</label>' +
         '<select id="dimSelect">' + dims.map(function (d) { return '<option value="' + escapeHtml(d) + '"' + (d === dimSelected ? ' selected' : '') + '>' + escapeHtml(d) + '</option>'; }).join('') + '</select>' +
       '</div>' +
-      filterChip(bydimFilialFilter, 'bdClearChip') +
       '<div class="grid grid-kpi">' +
-        kpi(fmtInt(total), 'Total ' + dimSelected, 'estoque consolidado', 'c-navy') +
-        kpi(fmtInt(novo), 'Novos', fmtPct(novo, total) + ' do total', 'c-novo') +
-        kpi(fmtInt(rcp), 'Recapados', fmtPct(rcp, total) + ' do total', 'c-rcp') +
-        kpi(fmtInt(filiaisSummary.length), 'Filiais', 'com esta dimensão', 'c-teal') +
+        kpi(fmtInt(total), 'Total ' + dimSelected, '', 'c-navy') +
+        kpi(fmtInt(novo), 'Novos', fmtPct(novo, total), 'c-novo') +
+        kpi(fmtInt(rcp), 'Recapados', fmtPct(rcp, total), 'c-rcp') +
+        kpi(fmtInt(filiaisSummary.length), 'Filiais', '', 'c-teal') +
       '</div>' +
       '<div class="grid grid-2 section-gap">' +
         '<div class="panel"><h2>Distribuição por Filial e Status</h2>' + renderStack(stackItems, { total: dimTotal, filterType: 'filial', activeValue: bydimFilialFilter }) + '</div>' +
@@ -957,9 +930,6 @@
 
     var sel = document.getElementById('dimSelect');
     if (sel) sel.addEventListener('change', function () { dimSelected = this.value; bydimFilialFilter = null; renderByDim(); });
-
-    var clearBtn = document.getElementById('bdClearChip');
-    if (clearBtn) clearBtn.addEventListener('click', function () { bydimFilialFilter = null; renderByDim(); });
 
     if (!host.dataset.boundClicks) {
       host.addEventListener('click', function (e) {
